@@ -114,6 +114,19 @@ class ElasticSearchManager:
         return value
 
     @property
+    def query_type(self):
+        """Query type chosen."""
+        try:
+            value = api.portal.get_registry_record(
+                "query_type", interfaces.IElasticSettings, "match"
+            )
+        except KeyError:
+            value = "match"
+        if value is None:
+            value = "match"
+        return value
+
+    @property
     def catalog(self):
         return api.portal.get_tool("portal_catalog")
 
