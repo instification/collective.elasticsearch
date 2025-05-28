@@ -1,6 +1,7 @@
 from Acquisition import aq_base
 from Acquisition import aq_parent
 from collective.elasticsearch import logger
+from collective.elasticsearch.utils import getSearchFields
 from datetime import date
 from datetime import datetime
 from DateTime import DateTime
@@ -211,7 +212,12 @@ class EZCTextIndex(BaseIndex):
         return None
 
     def _make_simple_query_string(self, query):
+        """ Replace some of the typical and/or operators with correct
+            simple query string syntax """
         query = query.replace(" AND ", " + ")
+        query = query.replace(" and ", " + ")
+        query = query.replace(" OR ", " | ")
+        query = query.replace(" or ", " | ")
         return query
 
     def get_query(self, name, value):
@@ -220,17 +226,21 @@ class EZCTextIndex(BaseIndex):
         if self.query_type == "match":
             clean_value = value.strip("*") if value else ""
             queries = [{"match_phrase": {name: {"query": clean_value, "slop": 2}}}]
-            if name in ("Title", "SearchableText"):
+            for search in getSearchFields():
+                # we add the base search field above, skip duplicating here...
+                if search == name:
+                    continue
                 # titles have most importance... we override here...
-                queries.append(
-                    {
-                        "match_phrase_prefix": {
-                            "Title": {"query": clean_value, "boost": 2}
+                if search == "Title":
+                    queries.append(
+                        {
+                            "match_phrase_prefix": {
+                                "Title": {"query": clean_value, "boost": 2}
+                            }
                         }
-                    }
-                )
-            if name != "Title":
-                queries.append({"match": {name: {"query": clean_value}}})
+                    )
+                else:
+                    queries.append({"match": {search: {"query": clean_value}}})
 
             return queries
 
@@ -238,10 +248,12 @@ class EZCTextIndex(BaseIndex):
             qs_value = self._make_simple_query_string(value)
 
             fields = []
-            if name in ("Title", "SearchableText"):
-                fields.extend(["Title^2", "SearchableText"])
-            else:
-                fields.append(name)
+            for field in getSearchFields():
+                # titles have most importance... we override here...
+                if field == "Title":
+                    fields.append("Title^2")
+                else:
+                    fields.append(field)
             query = {"simple_query_string": {"query": qs_value, "fields": fields}}
             return query
 
