@@ -98,7 +98,7 @@ def es_search(conn, index, body, **kwargs):
     return conn.search(index=index, body=body, **kwargs)
 
 
-def es_bulk(conn, index, body):
+def es_bulk(conn, index, body, **kwargs):
     """
     Execute bulk operations compatible with both ES 7 and ES 8.
 
@@ -111,8 +111,8 @@ def es_bulk(conn, index, body):
         Bulk response dictionary.
     """
     if IS_ES_8:
-        return conn.bulk(index=index, operations=body)
-    return conn.bulk(index=index, body=body)
+        return conn.bulk(index=index, operations=body, **kwargs)
+    return conn.bulk(index=index, body=body, **kwargs)
 
 
 def indices_create(conn, index, body=None):

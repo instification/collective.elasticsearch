@@ -114,6 +114,9 @@ class EKeywordIndex(BaseIndex):
     def extract(self, name, data):
         return data[name] or []
 
+    def create_mapping(self, name):
+        return {"type": "keyword", "index": True, "store": True}
+
 
 class EFieldIndex(BaseIndex):
     pass

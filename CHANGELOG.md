@@ -50,6 +50,10 @@
 
 - Add match query type to search @instification
 
+- Always use elastic search when performing catalog searches @instification
+
+- Add has_child (parent/child) query support @instification
+
 
 ## 5.0.0 (2022-10-11)
 

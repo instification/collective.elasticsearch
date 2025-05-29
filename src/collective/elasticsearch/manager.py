@@ -114,6 +114,58 @@ class ElasticSearchManager:
         return value
 
     @property
+    def map_parent_child(self):
+        """Search highlighting post tags."""
+        try:
+            value = api.portal.get_registry_record(
+                "map_parent_child", interfaces.IElasticSettings, ""
+            )
+        except KeyError:
+            value = False
+        if value is None:
+            value = False
+        return value
+
+    @property
+    def parent_types(self):
+        """Types to map as parents"""
+        try:
+            value = api.portal.get_registry_record(
+                "parent_types", interfaces.IElasticSettings, ""
+            )
+        except KeyError:
+            value = []
+        if value is None:
+            value = []
+        return value
+
+    @property
+    def child_types(self):
+        """Types to map as children"""
+        try:
+            value = api.portal.get_registry_record(
+                "child_types", interfaces.IElasticSettings, ""
+            )
+        except KeyError:
+            value = []
+        if value is None:
+            value = []
+        return value
+
+    @property
+    def child_facets(self):
+        """Facets to query against children"""
+        try:
+            value = api.portal.get_registry_record(
+                "child_facets", interfaces.IElasticSettings, ""
+            )
+        except KeyError:
+            value = []
+        if value is None:
+            value = []
+        return value
+
+    @property
     def query_type(self):
         """Query type chosen."""
         try:
@@ -326,7 +378,11 @@ class ElasticSearchManager:
     def _bulk_call_direct(self, batch):
         data = [item for sublist in batch for item in sublist]
         logger.info(f"Bulk call with {len(data)} entries and {len(batch)} actions.")
-        result = es_bulk(self.connection, self.index_name, data)
+        if self.map_parent_child:
+            # parent/child mapping requires all documents on one shard
+            result = es_bulk(self.connection, self.index_name, data, routing=1)
+        else:
+            result = es_bulk(self.connection, self.index_name, data)
         if "errors" in result and result["errors"] is True:
             logger.error(f"Error in bulk operation: {result}")
 
@@ -408,7 +464,16 @@ class ElasticSearchManager:
         if sort is not None:
             body["sort"] = sort
         warnings.simplefilter("ignore", ResourceWarning)
-        if self.highlight:
+
+        # This is where search highlighting is added. However, if has_child
+        # is in use then highlighting is handles when the query is built.
+        has_child = None
+        try:
+            has_child = body["query"]["bool"]["should"]["has_child"]
+        except (KeyError, TypeError):
+            pass
+
+        if not has_child and self.highlight:
             body["highlight"] = {
                 "fields": {
                     "SearchableText": {

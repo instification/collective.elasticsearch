@@ -92,6 +92,33 @@ class IElasticSettings(Interface):
         vocabulary=query_types,
     )
 
+    map_parent_child = schema.Bool(
+        title="Map simple Parent/Child relationships",
+        description="See https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-has-child-query.html",
+        default=False,
+        required=False)
+
+    parent_types = schema.Set(
+        title="Parent Types",
+        description="Content types which will be marked as parents.",
+        value_type=schema.TextLine(title="Parent Types"),
+        required=False
+    )
+
+    child_types = schema.Set(
+        title="Child Types",
+        description="Content types which will be marked as children.",
+        value_type=schema.TextLine(title="Child Types"),
+        required=False
+    )
+
+    child_facets = schema.Set(
+        title="Child Facets",
+        description="List of facets to query against children in a has_child query",
+        value_type=schema.TextLine(title="Child Facets"),
+        required=False
+    )
+
     sniff_on_start = schema.Bool(title="Sniff on start", default=False, required=False)
 
     sniff_on_connection_fail = schema.Bool(

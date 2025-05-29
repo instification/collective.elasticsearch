@@ -65,10 +65,65 @@ class QueryAssembler:
         if len(filters) == 0 and len(matches) == 0:
             return query
         query = {"bool": {}}
+
+        # To add support for has_child queries we check settings and see if
+        # the query is constrained by a matching parent type.
+        has_child = False
+        child_filters = []
+        if self.es.map_parent_child and self.es.parent_types:
+            for f in filters:
+                if f.get('terms') and f['terms'].get('portal_type'):
+                    for x in self.es.parent_types:
+                        if x in f['terms']['portal_type']:
+                            has_child = True
+
         if len(filters) > 0:
-            query["bool"]["filter"] = filters
+
+            # Some facets should be against the child. Here we parse the
+            # child_facets settings and move them accordingly. They are added
+            # to the query later.
+            if has_child:
+                parent_filters = []
+                for f in filters:
+                    if f.get('terms') and [x for x in f['terms'].keys()][0] in self.es.child_facets:
+                        child_filters.append(f)
+                    else:
+                        parent_filters.append(f)
+                query["bool"]["filter"] = parent_filters
+            else:
+                query["bool"]["filter"] = filters
 
         if len(matches) > 0:
-            query["bool"]["should"] = matches
+            if has_child:
+
+                # Construct the inner 'has_child' query
+                query["bool"]["should"] = {
+                    "has_child": {
+                        "type": "child",
+                        "score_mode": "max",
+                        "query": {
+                            "bool": {
+                                "should": matches
+                            }
+                        }
+                    }
+                }
+
+                # Add any child facets discovered earlier
+                if len(child_filters) > 0:
+                    query["bool"]["should"]["has_child"]["query"]["bool"]["filter"] = child_filters
+
+                # If search highlighting is enabled we need to get the matching
+                # terms from the inner hits.
+                if self.es.highlight:
+                    query["bool"]["should"]["has_child"]["inner_hits"] = {
+                        "highlight": {
+                            "fields": {"SearchableText": {"number_of_fragments": 5}},
+                            "pre_tags": self.es.highlight_pre_tags.split("\n"),
+                            "post_tags": self.es.highlight_post_tags.split("\n"),
+                        }
+                    }
+            else:
+                query["bool"]["should"] = matches
             query["bool"]["minimum_should_match"] = 1
         return query

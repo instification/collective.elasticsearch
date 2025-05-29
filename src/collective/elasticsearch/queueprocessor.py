@@ -153,6 +153,22 @@ class IndexProcessor:
         elif uuid in actions.unindex:
             # Remove from unindex
             actions.unindex.pop(uuid)
+
+        # Add any parent/child relationships
+        # See https://www.elastic.co/guide/en/elasticsearch/reference/8.14/query-dsl-has-child-query.html
+        ptype = data.get('portal_type')
+        if ptype and self.manager.map_parent_child:
+            if ptype in self.manager.parent_types:
+                data['parent_child'] = {
+                    "name": "parent",
+                }
+            if ptype in self.manager.child_types:
+                data['parent_child'] = {
+                    "name": "child",
+                    "parent": obj.aq_parent.UID()
+                }
+
+
         actions.index[uuid] = data
         actions.index_blobs[uuid] = blob_data
 
