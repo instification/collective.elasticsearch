@@ -225,7 +225,12 @@ class EZCTextIndex(BaseIndex):
         # ES doesn't care about * like zope catalog does
         if self.query_type == "match":
             clean_value = value.strip("*") if value else ""
-            queries = [{"match_phrase": {name: {"query": clean_value, "slop": 2}}}]
+            queries = [
+                {"match": {
+                    name: {"query": clean_value}}},
+                {"match_phrase": {
+                    name: {"query": clean_value, "slop": 3, "boost": 2}}}
+            ]
             for search in getSearchFields():
                 # we add the base search field above, skip duplicating here...
                 if search == name:
@@ -233,9 +238,13 @@ class EZCTextIndex(BaseIndex):
                 # titles have most importance... we override here...
                 if search == "Title":
                     queries.append(
+                        {"match": {"Title": {"query": clean_value, "boost": 2}}}
+                    )
+                    # Phrases are better matches
+                    queries.append(
                         {
                             "match_phrase_prefix": {
-                                "Title": {"query": clean_value, "boost": 2}
+                                "Title": {"query": clean_value, "boost": 4}
                             }
                         }
                     )

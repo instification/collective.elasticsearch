@@ -48,6 +48,8 @@
 
 - Fix autoinclude plugin config @maethu
 
+- Add match query type to search @instification
+
 
 ## 5.0.0 (2022-10-11)
 
