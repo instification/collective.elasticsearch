@@ -42,6 +42,7 @@ class QueryAssembler:
         query_type = self.es.query_type
         query = {"match_all": {}}
         es_only_indexes = getESOnlyIndexes()
+        values = False
         for key, value in dquery.items():
             if key not in idxs and key not in es_only_indexes:
                 continue
@@ -50,6 +51,14 @@ class QueryAssembler:
                 # deleted index for plone performance but still need on ES
                 index = EZCTextIndex(catalog, key, query_type=query_type)
             qq = index.get_query(key, value)
+            qv = None
+            if type(value) == str:
+                qv = value
+            if type(value) == dict:
+                qv = value.get('query', '')
+
+            if key in es_only_indexes and len(qv) > 0:
+                values = True
             if qq is None:
                 continue
             if index is not None and index.filter_query:
@@ -115,7 +124,9 @@ class QueryAssembler:
 
                 # If search highlighting is enabled we need to get the matching
                 # terms from the inner hits.
-                if self.es.highlight:
+                # Note if there is no SearchableText (values==False) we disable
+                # highlighting as it breaks the results.
+                if self.es.highlight and values:
                     query["bool"]["should"]["has_child"]["inner_hits"] = {
                         "highlight": {
                             "fields": {"SearchableText": {"number_of_fragments": 5}},
@@ -125,5 +136,10 @@ class QueryAssembler:
                     }
             else:
                 query["bool"]["should"] = matches
-            query["bool"]["minimum_should_match"] = 1
+
+            # If there is no SearchableText query or filters then all docs
+            # should be returned (ie: a listing)
+            query["bool"]["minimum_should_match"] = 0
+            if values or len(child_filters) > 0:
+                query["bool"]["minimum_should_match"] = 1
         return query

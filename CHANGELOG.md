@@ -54,6 +54,16 @@
 
 - Add has_child (parent/child) query support @instification
 
+- Add min_score option to control panel and search @instification
+
+- Use existing timeout value when performing search @instification
+
+- Set correct index type for keyword indexes @instification
+
+- Add DEBUG_ELASTICSEARCH env var and reduce debug output @instification
+
+- Handle empty queries by returning all results @instification
+
 
 ## 5.0.0 (2022-10-11)
 
