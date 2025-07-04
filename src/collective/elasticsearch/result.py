@@ -116,7 +116,9 @@ def BrainFactory(manager):
                     if idx > 0 and fraglen > manager.highlight_threshold:
                         break
                     fragments.append(i)
-                brain["Description"] = " ... ".join(fragments)
+                # We only want to change the description if we have something
+                if len(fragments) > 0:
+                    brain["Description"] = " ... ".join(fragments)
             return brain
         # We should handle cases where there is no path in the ES response
         return None

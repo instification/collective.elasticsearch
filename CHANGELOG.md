@@ -64,6 +64,8 @@
 
 - Handle empty queries by returning all results @instification
 
+- Fix sorting and highlighting bug @instification
+
 
 ## 5.0.0 (2022-10-11)
 
