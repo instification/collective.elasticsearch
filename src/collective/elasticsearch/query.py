@@ -104,42 +104,102 @@ class QueryAssembler:
 
         if len(matches) > 0:
             if has_child:
+                highlight_filter_field = self.es.highlight_filter_field
+                highlight_filter_value = self.es.highlight_filter_value
+                use_highlight_filter = bool(highlight_filter_field and highlight_filter_value)
 
-                # Construct the inner 'has_child' query
-                query["bool"]["should"] = {
-                    "has_child": {
-                        "type": "child",
-                        "score_mode": "max",
-                        "query": {
-                            "bool": {
-                                "should": matches
+                if use_highlight_filter:
+                    # Two has_child approach: one in filter for matching
+                    # (all languages), one in should for scoring and
+                    # filtered highlights.
+
+                    # 1. Matching has_child in filter — ensures parents with
+                    #    any matching children appear in results.
+                    matching_has_child = {
+                        "has_child": {
+                            "type": "child",
+                            "query": {
+                                "bool": {
+                                    "should": matches
+                                }
                             }
                         }
                     }
-                }
+                    if len(child_filters) > 0:
+                        matching_has_child["has_child"]["query"]["bool"]["filter"] = child_filters
 
-                # Add any child facets discovered earlier
-                if len(child_filters) > 0:
-                    query["bool"]["should"]["has_child"]["query"]["bool"]["filter"] = child_filters
+                    if not isinstance(query["bool"].get("filter"), list):
+                        query["bool"]["filter"] = []
+                    query["bool"]["filter"].append(matching_has_child)
 
-                # If search highlighting is enabled we need to get the matching
-                # terms from the inner hits.
-                # Note if there is no SearchableText (values==False) we disable
-                # highlighting as it breaks the results.
-                if self.es.highlight and values:
-                    query["bool"]["should"]["has_child"]["inner_hits"] = {
-                        "highlight": {
-                            "fields": {"SearchableText": {"number_of_fragments": 5}},
-                            "pre_tags": self.es.highlight_pre_tags.split("\n"),
-                            "post_tags": self.es.highlight_post_tags.split("\n"),
+                    # 2. Highlight has_child in should — scores and produces
+                    #    inner_hits only from the configured field/value.
+                    highlight_has_child = {
+                        "has_child": {
+                            "type": "child",
+                            "score_mode": "max",
+                            "query": {
+                                "bool": {
+                                    "filter": [
+                                        {"term": {highlight_filter_field: highlight_filter_value}}
+                                    ],
+                                    "should": matches,
+                                    "minimum_should_match": 1
+                                }
+                            }
                         }
                     }
+
+                    if self.es.highlight and values:
+                        highlight_has_child["has_child"]["inner_hits"] = {
+                            "highlight": {
+                                "fields": {"SearchableText": {"number_of_fragments": 5}},
+                                "pre_tags": self.es.highlight_pre_tags.split("\n"),
+                                "post_tags": self.es.highlight_post_tags.split("\n"),
+                            }
+                        }
+
+                    query["bool"]["should"] = highlight_has_child
+
+                    # Matching is handled by the filter has_child so the
+                    # should is optional (provides scoring/highlights only).
+                    query["bool"]["minimum_should_match"] = 0
+
+                else:
+                    # Original single has_child approach
+                    query["bool"]["should"] = {
+                        "has_child": {
+                            "type": "child",
+                            "score_mode": "max",
+                            "query": {
+                                "bool": {
+                                    "should": matches
+                                }
+                            }
+                        }
+                    }
+
+                    if len(child_filters) > 0:
+                        query["bool"]["should"]["has_child"]["query"]["bool"]["filter"] = child_filters
+
+                    if self.es.highlight and values:
+                        query["bool"]["should"]["has_child"]["inner_hits"] = {
+                            "highlight": {
+                                "fields": {"SearchableText": {"number_of_fragments": 5}},
+                                "pre_tags": self.es.highlight_pre_tags.split("\n"),
+                                "post_tags": self.es.highlight_post_tags.split("\n"),
+                            }
+                        }
+
+                    # If there is no SearchableText query or filters then all
+                    # docs should be returned (ie: a listing)
+                    query["bool"]["minimum_should_match"] = 0
+                    if values or len(child_filters) > 0:
+                        query["bool"]["minimum_should_match"] = 1
             else:
                 query["bool"]["should"] = matches
 
-            # If there is no SearchableText query or filters then all docs
-            # should be returned (ie: a listing)
-            query["bool"]["minimum_should_match"] = 0
-            if values or len(child_filters) > 0:
-                query["bool"]["minimum_should_match"] = 1
+                query["bool"]["minimum_should_match"] = 0
+                if values or len(child_filters) > 0:
+                    query["bool"]["minimum_should_match"] = 1
         return query

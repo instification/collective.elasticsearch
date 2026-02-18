@@ -171,6 +171,24 @@ class IElasticSettings(Interface):
         required=False,
     )
 
+    highlight_filter_field = schema.TextLine(
+        title="Highlight Filter Field",
+        description="A field used to filter highlighted results "
+                    "(e.g. language). When set along with "
+                    "Highlight Value, inner_hits highlights will only come "
+                    "from child documents matching this field/value.",
+        default=None,
+        required=False,
+    )
+
+    highlight_filter_value = schema.TextLine(
+        title="Highlight Filter Value",
+        description="The value to restrict highlights to (e.g. English). "
+                    "Used together with Highlight Filter Field.",
+        default=None,
+        required=False,
+    )
+
     raise_search_exception = schema.Bool(
         title="Raise Search Exceptions",
         description="If there is an error with elastic search Plone will default to trying the old catalog search. Set this to true to raise the error instead.",

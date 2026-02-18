@@ -66,6 +66,8 @@
 
 - Fix sorting and highlighting bug @instification
 
+- Add highglight filtering to parent/child search results @instification
+
 
 ## 5.0.0 (2022-10-11)
 

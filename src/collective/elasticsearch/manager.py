@@ -114,6 +114,28 @@ class ElasticSearchManager:
         return value
 
     @property
+    def highlight_filter_field(self):
+        """Elasticsearch field to filter highlights by."""
+        try:
+            value = api.portal.get_registry_record(
+                "highlight_filter_field", interfaces.IElasticSettings, None
+            )
+        except KeyError:
+            value = None
+        return value or ""
+
+    @property
+    def highlight_filter_value(self):
+        """Value to restrict highlights to."""
+        try:
+            value = api.portal.get_registry_record(
+                "highlight_filter_value", interfaces.IElasticSettings, None
+            )
+        except KeyError:
+            value = None
+        return value or ""
+
+    @property
     def map_parent_child(self):
         """Search highlighting post tags."""
         try:
