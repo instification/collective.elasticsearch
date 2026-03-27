@@ -36,3 +36,4 @@ reports/
 test.plone_addon/
 var/
 venv/
+.flakeheaven_cache/

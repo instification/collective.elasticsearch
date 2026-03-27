@@ -455,3 +455,302 @@ class TestSearchOnRemovedIndex(BaseFunctionalTest):
         )
         self.assertEqual(len(el_results), 1)
         self.assertEqual(el_results[0].getId, self.document.id)
+
+
+class TestParentChildSearch(BaseFunctionalTest):
+    """Integration tests for parent/child (has_child) search functionality."""
+
+    layer = ElasticSearch_FUNCTIONAL_TESTING
+
+    def _configure_parent_child(self):
+        """Enable parent/child mapping and rebuild the catalog."""
+        settings = get_settings()
+        settings.map_parent_child = True
+        settings.parent_types = {"Folder"}
+        settings.child_types = {"Document"}
+        self.catalog.manage_catalogRebuild()
+        self.commit()
+
+    def _create_test_content(self):
+        """Create a standard set of folders with child documents for testing.
+        Returns (folder1, folder2) for further assertions."""
+        folder1 = api.content.create(
+            self.portal, "Folder", "folder1", title="First Container"
+        )
+        api.content.create(
+            folder1, "Document", "doc1", title="Unique Elephants Migration"
+        )
+        folder2 = api.content.create(
+            self.portal, "Folder", "folder2", title="Second Container"
+        )
+        api.content.create(folder2, "Document", "doc2", title="Rare Platypus Diet")
+        # A nested folder to test path filtering
+        subfolder = api.content.create(
+            folder1, "Folder", "subfolder", title="Nested Container"
+        )
+        api.content.create(
+            subfolder, "Document", "doc3", title="Unique Elephants Habitat"
+        )
+        self.commit(wait=1)
+        return folder1, folder2
+
+    # -- Blank search (no SearchableText), no additional filters --
+
+    def test_blank_search_no_filters_returns_all_folders(self):
+        """Querying for portal_type Folder without SearchableText should
+        return all Folders (listing mode)."""
+        self._configure_parent_child()
+        self._create_test_content()
+
+        results = self.search(
+            {
+                "portal_type": ["Folder"],
+            }
+        )
+        result_ids = {r.getId for r in results}
+        self.assertIn("folder1", result_ids)
+        self.assertIn("folder2", result_ids)
+        self.assertIn("subfolder", result_ids)
+        self.assertEqual(len(results), 3)
+
+    # -- Blank search (no SearchableText), with filters --
+
+    def test_blank_search_with_path_filter(self):
+        """Querying for portal_type Folder with a path filter but no
+        SearchableText should return only Folders under that path."""
+        self._configure_parent_child()
+        self._create_test_content()
+
+        results = self.search(
+            {
+                "portal_type": ["Folder"],
+                "path": {"depth": 1, "query": "/plone"},
+            }
+        )
+        result_ids = {r.getId for r in results}
+        # Only top-level folders, not the nested subfolder
+        self.assertEqual(result_ids, {"folder1", "folder2"})
+
+    # -- Search terms without additional filters --
+
+    def test_search_terms_no_extra_filters(self):
+        """Searching with SearchableText and portal_type only should return
+        parents whose children match the search term."""
+        self._configure_parent_child()
+        self._create_test_content()
+
+        results = self.search(
+            {
+                "portal_type": ["Folder"],
+                "SearchableText": "elephants",
+            }
+        )
+        # folder1 and subfolder both have children mentioning elephants
+        result_ids = {r.getId for r in results}
+        self.assertIn("folder1", result_ids)
+        self.assertEqual(len(results), 2)
+
+    def test_search_terms_no_match(self):
+        """Searching for a term no child contains should return 0 results."""
+        self._configure_parent_child()
+        self._create_test_content()
+
+        results = self.search(
+            {
+                "portal_type": ["Folder"],
+                "SearchableText": "xylophone",
+            }
+        )
+        self.assertEqual(len(results), 0)
+
+    def test_search_terms_multiple_parents(self):
+        """Multiple Folders should be returned when each has a matching
+        child Document."""
+        self._configure_parent_child()
+        self._create_test_content()
+        # Add a platypus child to folder1 so both folders match
+        folder1 = self.portal["folder1"]
+        api.content.create(
+            folder1, "Document", "doc-platypus", title="Rare Platypus Info"
+        )
+        self.commit(wait=1)
+
+        results = self.search(
+            {
+                "portal_type": ["Folder"],
+                "SearchableText": "platypus",
+            }
+        )
+        result_ids = {r.getId for r in results}
+        self.assertIn("folder1", result_ids)
+        self.assertIn("folder2", result_ids)
+
+    # -- Search terms with additional filters --
+
+    def test_search_terms_with_path_filter(self):
+        """Combining SearchableText with a path filter should only return
+        parents that match both the path constraint and have matching
+        children."""
+        self._configure_parent_child()
+        self._create_test_content()
+
+        # Search for elephants but restrict to depth=1 under /plone
+        results = self.search(
+            {
+                "portal_type": ["Folder"],
+                "SearchableText": "elephants",
+                "path": {"depth": 1, "query": "/plone"},
+            }
+        )
+        # folder1 is at depth 1 and has a child about elephants
+        # subfolder is at depth 2, so it should be excluded
+        result_ids = {r.getId for r in results}
+        self.assertIn("folder1", result_ids)
+        self.assertNotIn("subfolder", result_ids)
+
+    def test_search_terms_with_path_filter_no_match(self):
+        """Path filter can exclude all matching parents."""
+        self._configure_parent_child()
+        self._create_test_content()
+
+        # Platypus only exists under folder2, search under folder1's path
+        results = self.search(
+            {
+                "portal_type": ["Folder"],
+                "SearchableText": "platypus",
+                "path": {"depth": -1, "query": "/plone/folder1"},
+            }
+        )
+        self.assertEqual(len(results), 0)
+
+    # -- Highlight --
+
+    def test_highlight_on_parent_child(self):
+        """When highlight is enabled, the Description of returned parent
+        brains should contain highlighted text from the child inner_hits."""
+        self._configure_parent_child()
+        settings = get_settings()
+        settings.highlight = True
+        settings.highlight_pre_tags = "<em>"
+        settings.highlight_post_tags = "</em>"
+
+        folder = api.content.create(
+            self.portal, "Folder", "highlight-folder", title="Container"
+        )
+        api.content.create(
+            folder,
+            "Document",
+            "highlight-doc",
+            title="Unique Elephants Migration",
+        )
+        self.commit(wait=1)
+
+        results = self.search(
+            {
+                "portal_type": ["Folder"],
+                "SearchableText": "elephants",
+                "path": {"depth": 1, "query": "/plone"},
+            }
+        )
+        # Find our specific folder in results
+        matched = [r for r in results if r.getId == "highlight-folder"]
+        self.assertEqual(len(matched), 1)
+        description = matched[0].Description
+        self.assertIn("<em>", description)
+        self.assertIn("Elephants", description)
+
+
+class TestHighlightFilterSearch(BaseFunctionalTest):
+    """End-to-end tests for the highlight filter feature which restricts
+    inner_hits highlights to children matching a configurable field/value
+    (e.g. review_state=published)."""
+
+    layer = ElasticSearch_FUNCTIONAL_TESTING
+
+    def _configure_parent_child_with_filter(
+        self, filter_field="review_state", filter_value="published"
+    ):
+        """Enable parent/child mapping with highlight filter and rebuild."""
+        settings = get_settings()
+        settings.map_parent_child = True
+        settings.parent_types = {"Folder"}
+        settings.child_types = {"Document"}
+        settings.highlight = True
+        settings.highlight_pre_tags = "<em>"
+        settings.highlight_post_tags = "</em>"
+        settings.highlight_filter_field = filter_field
+        settings.highlight_filter_value = filter_value
+        self.catalog.manage_catalogRebuild()
+        self.commit()
+
+    def test_highlights_restricted_to_filtered_value(self):
+        """When highlight filter is configured for review_state=published,
+        highlights should only contain text from the published child,
+        not from a private child that also matches the query."""
+        self._configure_parent_child_with_filter()
+        folder = api.content.create(self.portal, "Folder", "folder1", title="Container")
+        # Both children match the search term
+        published_doc = api.content.create(
+            folder,
+            "Document",
+            "pub-doc",
+            title="Volcanic Eruption Published Info",
+        )
+        api.content.create(
+            folder,
+            "Document",
+            "priv-doc",
+            title="Volcanic Eruption Private Secret",
+        )
+        api.content.transition(obj=published_doc, transition="publish")
+        self.commit(wait=1)
+
+        results = self.search(
+            {
+                "portal_type": ["Folder"],
+                "SearchableText": "volcanic",
+            }
+        )
+        self.assertEqual(len(results), 1)
+        description = results[0].Description
+        # Highlight should contain the published child's text
+        self.assertIn("<em>", description)
+        self.assertIn("Published", description)
+        # Highlight should NOT contain the private child's text
+        self.assertNotIn("Secret", description)
+
+    def test_no_highlight_filter_highlights_any_child(self):
+        """Without highlight filter settings, highlights can come from
+        any matching child regardless of review_state."""
+        settings = get_settings()
+        settings.map_parent_child = True
+        settings.parent_types = {"Folder"}
+        settings.child_types = {"Document"}
+        settings.highlight = True
+        settings.highlight_pre_tags = "<em>"
+        settings.highlight_post_tags = "</em>"
+        settings.highlight_filter_field = None
+        settings.highlight_filter_value = None
+        self.catalog.manage_catalogRebuild()
+        self.commit()
+
+        folder = api.content.create(self.portal, "Folder", "folder1", title="Container")
+        api.content.create(
+            folder,
+            "Document",
+            "doc1",
+            title="Zigzag Zebra Zoology",
+        )
+        self.commit(wait=1)
+
+        results = self.search(
+            {
+                "portal_type": ["Folder"],
+                "SearchableText": "zebra",
+            }
+        )
+        self.assertEqual(len(results), 1)
+        description = results[0].Description
+        # Highlights should be present from the (private) child
+        self.assertIn("<em>", description)
+        self.assertIn("Zebra", description)

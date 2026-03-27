@@ -130,7 +130,19 @@ class QueryAssembler:
 
                     if not isinstance(query["bool"].get("filter"), list):
                         query["bool"]["filter"] = []
-                    query["bool"]["filter"].append(matching_has_child)
+
+                    # Only append as a filter if there is a search term and
+                    # highlighting enabled as for blank searches the catalog
+                    # description is used.
+                    if self.es.highlight and values:
+                        query["bool"]["filter"].append(matching_has_child)
+                    else:
+                        if "should" in query["bool"]:
+                            query["bool"]["should"]["has_child"] = matching_has_child[
+                                "has_child"
+                            ]
+                        else:
+                            query["bool"]["should"] = matching_has_child
 
                     # 2. Highlight has_child in should — scores and produces
                     #    inner_hits only from the configured field/value.
@@ -144,7 +156,7 @@ class QueryAssembler:
                                         {"term": {highlight_filter_field: highlight_filter_value}}
                                     ],
                                     "should": matches,
-                                    "minimum_should_match": 1
+                                    "minimum_should_match": 0,
                                 }
                             }
                         }
@@ -158,13 +170,17 @@ class QueryAssembler:
                                 "post_tags": self.es.highlight_post_tags.split("\n"),
                             }
                         }
+                        highlight_has_child["has_child"]["query"]["bool"][
+                            "minimum_should_match"
+                        ] = 1
 
-                    query["bool"]["should"] = highlight_has_child
+                        query["bool"]["should"] = highlight_has_child
 
                     # Matching is handled by the filter has_child so the
                     # should is optional (provides scoring/highlights only).
                     query["bool"]["minimum_should_match"] = 0
-
+                    if values or len(child_filters) > 0:
+                        query["bool"]["minimum_should_match"] = 1
                 else:
                     # Original single has_child approach
                     query["bool"]["should"] = {
