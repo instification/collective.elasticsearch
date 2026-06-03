@@ -57,7 +57,14 @@ class QueryAssembler:
             if type(value) == dict:
                 qv = value.get('query', '')
 
-            if key in es_only_indexes and len(qv) > 0:
+            # ``values`` records whether the query carries a real full-text
+            # search term. It governs whether the full-text ``should`` clauses
+            # become mandatory (minimum_should_match) and whether highlighting
+            # runs. Only full-text indexes contribute those clauses, so a value
+            # on a filter index (filter_query=True) must not flip it true --
+            # otherwise a blank text search combined with a filter would force
+            # an impossible empty match and return zero results.
+            if key in es_only_indexes and len(qv) > 0 and not index.filter_query:
                 values = True
             if qq is None:
                 continue

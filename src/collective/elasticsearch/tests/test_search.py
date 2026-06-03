@@ -754,3 +754,74 @@ class TestHighlightFilterSearch(BaseFunctionalTest):
         # Highlights should be present from the (private) child
         self.assertIn("<em>", description)
         self.assertIn("Zebra", description)
+
+
+class TestESOnlyFilterIndexSearch(BaseFunctionalTest):
+    """A non-text (filter) index configured as ES-only -- as a deployment
+    does when it drives facet filtering entirely through Elasticsearch --
+    must behave purely as a filter.
+
+    Regression test: combining such a filter with a blank full-text search
+    used to set ``minimum_should_match`` to 1, forcing the (empty) full-text
+    ``should`` clauses to match and returning zero results, even though the
+    filter on its own matched documents.
+    """
+
+    layer = ElasticSearch_FUNCTIONAL_TESTING
+
+    def _configure_es_only_filter(self):
+        """Route a keyword (filter) index through Elasticsearch."""
+        settings = get_settings()
+        settings.es_only_indexes = set(getESOnlyIndexes()) | {"Subject"}
+
+    def _create_test_content(self):
+        doc1 = api.content.create(
+            self.portal, "Document", "doc1", title="First Document"
+        )
+        doc1.setSubject(("alpha",))
+        doc1.reindexObject()
+        doc2 = api.content.create(
+            self.portal, "Document", "doc2", title="Second Document"
+        )
+        doc2.setSubject(("beta",))
+        doc2.reindexObject()
+        self.commit(wait=1)
+
+    def test_blank_search_with_es_only_filter_returns_matches(self):
+        """A blank SearchableText combined with a filter on an ES-only index
+        should return the documents matching the filter (listing mode)."""
+        self._configure_es_only_filter()
+        self._create_test_content()
+
+        results = self.search(
+            {
+                "SearchableText": "",
+                "Subject": {"query": ["alpha"], "operator": "or"},
+            }
+        )
+        self.assertEqual({r.getId for r in results}, {"doc1"})
+
+    def test_search_term_with_es_only_filter_still_requires_text(self):
+        """A real search term combined with the same filter must still
+        require the text to match -- the filter must not loosen full-text
+        matching to a pure listing."""
+        self._configure_es_only_filter()
+        self._create_test_content()
+
+        # "First" only appears in doc1, which also carries the alpha subject.
+        results = self.search(
+            {
+                "SearchableText": "First",
+                "Subject": {"query": ["alpha"], "operator": "or"},
+            }
+        )
+        self.assertEqual({r.getId for r in results}, {"doc1"})
+
+        # No document with the alpha subject contains "Second".
+        results = self.search(
+            {
+                "SearchableText": "Second",
+                "Subject": {"query": ["alpha"], "operator": "or"},
+            }
+        )
+        self.assertEqual(len(results), 0)
