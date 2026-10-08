@@ -215,8 +215,8 @@ class EZCTextIndex(BaseIndex):
         return None
 
     def _make_simple_query_string(self, query):
-        """ Replace some of the typical and/or operators with correct
-            simple query string syntax """
+        """Replace some of the typical and/or operators with correct
+        simple query string syntax"""
         query = query.replace(" AND ", " + ")
         query = query.replace(" and ", " + ")
         query = query.replace(" OR ", " | ")
@@ -229,10 +229,8 @@ class EZCTextIndex(BaseIndex):
         if self.query_type == "match":
             clean_value = value.strip("*") if value else ""
             queries = [
-                {"match": {
-                    name: {"query": clean_value}}},
-                {"match_phrase": {
-                    name: {"query": clean_value, "slop": 3, "boost": 2}}}
+                {"match": {name: {"query": clean_value}}},
+                {"match_phrase": {name: {"query": clean_value, "slop": 3, "boost": 2}}},
             ]
             for search in getSearchFields():
                 # we add the base search field above, skip duplicating here...

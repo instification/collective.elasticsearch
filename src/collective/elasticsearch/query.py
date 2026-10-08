@@ -55,7 +55,7 @@ class QueryAssembler:
             if type(value) == str:
                 qv = value
             if type(value) == dict:
-                qv = value.get('query', '')
+                qv = value.get("query", "")
 
             # ``values`` records whether the query carries a real full-text
             # search term. It governs whether the full-text ``should`` clauses
@@ -88,9 +88,9 @@ class QueryAssembler:
         child_filters = []
         if self.es.map_parent_child and self.es.parent_types:
             for f in filters:
-                if f.get('terms') and f['terms'].get('portal_type'):
+                if f.get("terms") and f["terms"].get("portal_type"):
                     for x in self.es.parent_types:
-                        if x in f['terms']['portal_type']:
+                        if x in f["terms"]["portal_type"]:
                             has_child = True
 
         if len(filters) > 0:
@@ -101,7 +101,10 @@ class QueryAssembler:
             if has_child:
                 parent_filters = []
                 for f in filters:
-                    if f.get('terms') and [x for x in f['terms'].keys()][0] in self.es.child_facets:
+                    if (
+                        f.get("terms")
+                        and [x for x in f["terms"].keys()][0] in self.es.child_facets
+                    ):
                         child_filters.append(f)
                     else:
                         parent_filters.append(f)
@@ -113,7 +116,9 @@ class QueryAssembler:
             if has_child:
                 highlight_filter_field = self.es.highlight_filter_field
                 highlight_filter_value = self.es.highlight_filter_value
-                use_highlight_filter = bool(highlight_filter_field and highlight_filter_value)
+                use_highlight_filter = bool(
+                    highlight_filter_field and highlight_filter_value
+                )
 
                 if use_highlight_filter:
                     # Two has_child approach: one in filter for matching
@@ -125,15 +130,13 @@ class QueryAssembler:
                     matching_has_child = {
                         "has_child": {
                             "type": "child",
-                            "query": {
-                                "bool": {
-                                    "should": matches
-                                }
-                            }
+                            "query": {"bool": {"should": matches}},
                         }
                     }
                     if len(child_filters) > 0:
-                        matching_has_child["has_child"]["query"]["bool"]["filter"] = child_filters
+                        matching_has_child["has_child"]["query"]["bool"][
+                            "filter"
+                        ] = child_filters
 
                     if not isinstance(query["bool"].get("filter"), list):
                         query["bool"]["filter"] = []
@@ -160,19 +163,25 @@ class QueryAssembler:
                             "query": {
                                 "bool": {
                                     "filter": [
-                                        {"term": {highlight_filter_field: highlight_filter_value}}
+                                        {
+                                            "term": {
+                                                highlight_filter_field: highlight_filter_value
+                                            }
+                                        }
                                     ],
                                     "should": matches,
                                     "minimum_should_match": 0,
                                 }
-                            }
+                            },
                         }
                     }
 
                     if self.es.highlight and values:
                         highlight_has_child["has_child"]["inner_hits"] = {
                             "highlight": {
-                                "fields": {"SearchableText": {"number_of_fragments": 5}},
+                                "fields": {
+                                    "SearchableText": {"number_of_fragments": 5}
+                                },
                                 "pre_tags": self.es.highlight_pre_tags.split("\n"),
                                 "post_tags": self.es.highlight_post_tags.split("\n"),
                             }
@@ -194,21 +203,21 @@ class QueryAssembler:
                         "has_child": {
                             "type": "child",
                             "score_mode": "max",
-                            "query": {
-                                "bool": {
-                                    "should": matches
-                                }
-                            }
+                            "query": {"bool": {"should": matches}},
                         }
                     }
 
                     if len(child_filters) > 0:
-                        query["bool"]["should"]["has_child"]["query"]["bool"]["filter"] = child_filters
+                        query["bool"]["should"]["has_child"]["query"]["bool"][
+                            "filter"
+                        ] = child_filters
 
                     if self.es.highlight and values:
                         query["bool"]["should"]["has_child"]["inner_hits"] = {
                             "highlight": {
-                                "fields": {"SearchableText": {"number_of_fragments": 5}},
+                                "fields": {
+                                    "SearchableText": {"number_of_fragments": 5}
+                                },
                                 "pre_tags": self.es.highlight_pre_tags.split("\n"),
                                 "post_tags": self.es.highlight_post_tags.split("\n"),
                             }

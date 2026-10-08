@@ -80,7 +80,7 @@ class IElasticSettings(Interface):
 
     search_fields = schema.Set(
         title="Indexes which are used when performing a search. "
-              "Note, indexes should also be present in the Index setting.",
+        "Note, indexes should also be present in the Index setting.",
         default={"Title", "Description", "SearchableText"},
         value_type=schema.TextLine(title="Search Fields"),
     )
@@ -96,27 +96,28 @@ class IElasticSettings(Interface):
         title="Map simple Parent/Child relationships",
         description="See https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-has-child-query.html",
         default=False,
-        required=False)
+        required=False,
+    )
 
     parent_types = schema.Set(
         title="Parent Types",
         description="Content types which will be marked as parents.",
         value_type=schema.TextLine(title="Parent Types"),
-        required=False
+        required=False,
     )
 
     child_types = schema.Set(
         title="Child Types",
         description="Content types which will be marked as children.",
         value_type=schema.TextLine(title="Child Types"),
-        required=False
+        required=False,
     )
 
     child_facets = schema.Set(
         title="Child Facets",
         description="List of facets to query against children in a has_child query",
         value_type=schema.TextLine(title="Child Facets"),
-        required=False
+        required=False,
     )
 
     sniff_on_start = schema.Bool(title="Sniff on start", default=False, required=False)
@@ -174,9 +175,9 @@ class IElasticSettings(Interface):
     highlight_filter_field = schema.TextLine(
         title="Highlight Filter Field",
         description="A field used to filter highlighted results "
-                    "(e.g. language). When set along with "
-                    "Highlight Value, inner_hits highlights will only come "
-                    "from child documents matching this field/value.",
+        "(e.g. language). When set along with "
+        "Highlight Value, inner_hits highlights will only come "
+        "from child documents matching this field/value.",
         default=None,
         required=False,
     )
@@ -184,7 +185,7 @@ class IElasticSettings(Interface):
     highlight_filter_value = schema.TextLine(
         title="Highlight Filter Value",
         description="The value to restrict highlights to (e.g. English). "
-                    "Used together with Highlight Filter Field.",
+        "Used together with Highlight Filter Field.",
         default=None,
         required=False,
     )

@@ -79,10 +79,8 @@ class MappingAdapter:
         # We could map individual relationships from the control panel but
         # it's not obvious it adds anything
         if manager.map_parent_child:
-            properties['parent_child'] = {
-                'type': 'join',
-                'relations': {
-                    'parent': 'child'
-                }
+            properties["parent_child"] = {
+                "type": "join",
+                "relations": {"parent": "child"},
             }
         return {"properties": properties}

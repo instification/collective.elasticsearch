@@ -64,6 +64,7 @@ def getESOnlyIndexes():
     except (KeyError, AttributeError):
         return {"Title", "Description", "SearchableText"}
 
+
 def getSearchFields():
     settings = get_settings()
     try:

@@ -2,6 +2,10 @@
 
 ## 6.0.0 (unreleased)
 
+- Add configurable query types and search fields @instification
+
+- Add parent/child (has_child) search with filtered highlights @instification
+
 - Apply search highlighting to records that only live in elasticsearch. The hit was shadowed by the fetched record, so the highlight was silently dropped for those brains, and `ElasticSearchBrain` did not support item assignment at all @maethu
 
 - Let `has_key` and `in` on an elasticsearch only brain report the metadata columns declared by the catalog, like a real catalog brain does, instead of only the keys stored in the elasticsearch document @maethu
@@ -47,26 +51,6 @@
 - Fix fallback value if attr is not callable in queueprocessor @maethu
 
 - Fix autoinclude plugin config @maethu
-
-- Add match query type to search @instification
-
-- Always use elastic search when performing catalog searches @instification
-
-- Add has_child (parent/child) query support @instification
-
-- Add min_score option to control panel and search @instification
-
-- Use existing timeout value when performing search @instification
-
-- Set correct index type for keyword indexes @instification
-
-- Add DEBUG_ELASTICSEARCH env var and reduce debug output @instification
-
-- Handle empty queries by returning all results @instification
-
-- Fix sorting and highlighting bug @instification
-
-- Add highglight filtering to parent/child search results @instification
 
 
 ## 5.0.0 (2022-10-11)

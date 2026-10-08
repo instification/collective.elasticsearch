@@ -488,7 +488,7 @@ class ElasticSearchManager:
         warnings.simplefilter("ignore", ResourceWarning)
 
         # This is where search highlighting is added. However, if has_child
-        # is in use then highlighting is handles when the query is built.
+        # is in use then highlighting is handles when the query is built.
         has_child = None
         try:
             has_child = body["query"]["bool"]["should"]["has_child"]
