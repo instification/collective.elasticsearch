@@ -3,6 +3,7 @@
 ## 6.0.0 (unreleased)
 
 - Serialize set values in index data as lists @instification
+- Index the keys of mapping values in keyword indexes, as the catalog does @instification
 
 - Apply search highlighting to records that only live in elasticsearch. The hit was shadowed by the fetched record, so the highlight was silently dropped for those brains, and `ElasticSearchBrain` did not support item assignment at all @maethu
 
