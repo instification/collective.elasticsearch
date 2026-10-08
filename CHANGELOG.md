@@ -7,6 +7,7 @@
 - Map all keyword indexes as elasticsearch keywords; existing indexes need a rebuild @mustap @instification
 - Rebuild the elasticsearch client when the connection settings change @instification
 - A blank full-text query no longer restricts the results @instification
+- Render the control panel when the cluster doesn't answer @instification
 
 - Apply search highlighting to records that only live in elasticsearch. The hit was shadowed by the fetched record, so the highlight was silently dropped for those brains, and `ElasticSearchBrain` did not support item assignment at all @maethu
 
