@@ -9,6 +9,7 @@
 - A blank full-text query no longer restricts the results @instification
 - Render the control panel when the cluster doesn't answer @instification
 - Report the status and body of a bad response when fetching index data @instification
+- Log bulk calls and search requests at debug level @instification
 
 - Apply search highlighting to records that only live in elasticsearch. The hit was shadowed by the fetched record, so the highlight was silently dropped for those brains, and `ElasticSearchBrain` did not support item assignment at all @maethu
 
