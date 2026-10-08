@@ -2,6 +2,8 @@
 
 ## 6.0.0 (unreleased)
 
+- Add settings to retry searches after a delay when the cluster can't be reached @instification
+
 - Apply search highlighting to records that only live in elasticsearch. The hit was shadowed by the fetched record, so the highlight was silently dropped for those brains, and `ElasticSearchBrain` did not support item assignment at all @maethu
 
 - Let `has_key` and `in` on an elasticsearch only brain report the metadata columns declared by the catalog, like a real catalog brain does, instead of only the keys stored in the elasticsearch document @maethu
