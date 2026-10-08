@@ -12,6 +12,7 @@
 - Log bulk calls and search requests at debug level @instification
 - Add a minimum score setting for full-text searches @instification
 - Add settings to retry searches after a delay when the cluster can't be reached @instification
+- Count facets of keyword indexes with a `facets` catalog query parameter, also in @search and @querystring-search @instification
 
 - Apply search highlighting to records that only live in elasticsearch. The hit was shadowed by the fetched record, so the highlight was silently dropped for those brains, and `ElasticSearchBrain` did not support item assignment at all @maethu
 
